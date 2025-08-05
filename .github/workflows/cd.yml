@@ -1,35 +1,57 @@
-name: CI
+name: CD
 
 on:
   push:
     branches: [ main ]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
-  build-and-test:
+  build-push-deploy:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service: [frontend, backend]
 
     steps:
-      - uses: actions/checkout@v3
+      # 1) Checkout the repo
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Use Node.js ${{ matrix.service }}
-        uses: actions/setup-node@v3
+      # 2) Log in to Docker Hub
+      - name: Docker Hub login
+        uses: docker/login-action@v2
         with:
-          node-version: '18'
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Install dependencies for ${{ matrix.service }}
-        working-directory: ./${{ matrix.service }}
-        run: npm ci
+      # 3) Build & push your images
+      - name: Build & push images
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: |
+            dastraus007/notes-app-frontend:latest
+            dastraus007/notes-app-backend:latest
 
-      # Only run lint if you’ve added it to package.json:
-      - name: Lint ${{ matrix.service }}
-        if: ${{ hashFiles(format('{0}/package.json', matrix.service)) != '' && contains(fromJson(runner.os), 'Linux') }} # simple guard
-        working-directory: ./${{ matrix.service }}
-        run: npm run lint || echo "no lint script, skipping"
+      # 4) Prepare SSH (write key & known_hosts)
+      - name: Set up SSH for deploy
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Test ${{ matrix.service }}
-        working-directory: ./${{ matrix.service }}
-        run: npm test
+      # 5) Copy docker-compose.yml to the server
+      - name: Copy compose file
+        run: |
+          scp -i ~/.ssh/id_ed25519 \
+            docker-compose.yml \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:~/notes-app/
+
+      # 6) SSH in and deploy
+      - name: Deploy on server
+        run: |
+          ssh -i ~/.ssh/id_ed25519 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            cd ~/notes-app
+            docker-compose pull
+            docker-compose down
+            docker-compose up -d --remove-orphans
+          EOF
