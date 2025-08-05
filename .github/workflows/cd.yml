@@ -11,8 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Docker Hub login
         uses: docker/login-action@v2
@@ -36,25 +35,21 @@ jobs:
           push: true
           tags: dastraus007/notes-app-frontend:latest
 
-      - name: Set up SSH for deploy
+      - name: Set up SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Bootstrap VM (install Docker & Compose)
+      - name: Bootstrap VM
         run: |
           ssh -i ~/.ssh/id_ed25519 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
             sudo apt update
             sudo apt install -y docker.io docker-compose
             sudo usermod -aG docker $USER
+            mkdir -p ~/notes-app
           EOF
-
-      - name: Ensure remote deploy directory exists
-        run: |
-          ssh -i ~/.ssh/id_ed25519 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-            "mkdir -p ~/notes-app"
 
       - name: Copy docker-compose.yml to server
         run: |
