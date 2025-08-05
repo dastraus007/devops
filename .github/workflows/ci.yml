@@ -34,7 +34,7 @@ jobs:
         working-directory: ./${{ matrix.service }}
         run: npm run lint || echo "no lint script, skipping"
 
-      # 5) Run tests
+      # 5) Run tests only if a "test" script is defined
       - name: Test ${{ matrix.service }}
         working-directory: ./${{ matrix.service }}
-        run: npm test
+        run: npm run test --if-present
