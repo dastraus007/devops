@@ -17,7 +17,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2) Use Node.js
+      # 2)  Use Node.js
       - name: Setup Node.js for ${{ matrix.service }}
         uses: actions/setup-node@v3
         with:
