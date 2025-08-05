@@ -11,24 +11,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1) Checkout the repo
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # 2) Log in to Docker Hub
       - name: Docker Hub login
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build & push images
+      # 3) Build & push the backend image
+      - name: Build & push backend image
         uses: docker/build-push-action@v4
         with:
-          context: .
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            dastraus007/notes-app-backend:latest
+
+      # 4) Build & push the frontend image
+      - name: Build & push frontend image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
           push: true
           tags: |
             dastraus007/notes-app-frontend:latest
-            dastraus007/notes-app-backend:latest
 
+      # 5) Prepare SSH for deploy
       - name: Set up SSH for deploy
         run: |
           mkdir -p ~/.ssh
@@ -36,6 +50,7 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
+      # 6) Bootstrap VM (install Docker & Compose)
       - name: Bootstrap VM (install Docker & Compose)
         run: |
           ssh -i ~/.ssh/id_ed25519 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
@@ -44,12 +59,14 @@ jobs:
             sudo usermod -aG docker $USER
           EOF
 
+      # 7) Copy docker-compose.yml to the server
       - name: Copy docker-compose.yml to server
         run: |
           scp -i ~/.ssh/id_ed25519 \
             docker-compose.yml \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:~/notes-app/
 
+      # 8) SSH in and deploy updated containers
       - name: Deploy on server
         run: |
           ssh -i ~/.ssh/id_ed25519 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
