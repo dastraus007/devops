@@ -13,27 +13,22 @@ jobs:
         service: [frontend, backend]
 
     steps:
-      # 1) Check out your code
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2) Use Node.js
       - name: Setup Node.js ${{ matrix.service }}
         uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      # 3) Install dependencies
       - name: Install dependencies for ${{ matrix.service }}
         working-directory: ./${{ matrix.service }}
         run: npm ci
 
-      # 4) (Optional) Lint if you defined it
-      - name: Lint ${{ matrix.service }}
+      - name: Lint ${{ matrix.service }} (optional)
         working-directory: ./${{ matrix.service }}
         run: npm run lint --if-present
 
-      # 5) (Optional) Test if you defined it
-      - name: Test ${{ matrix.service }}
+      - name: Test ${{ matrix.service }} (optional)
         working-directory: ./${{ matrix.service }}
         run: npm run test --if-present
