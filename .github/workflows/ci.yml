@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ test-1 ]
+    branches: [ test-2 ]
   pull_request:
 
 jobs:
@@ -13,7 +13,7 @@ jobs:
         service: [frontend, backend]
 
     steps:
-      # 1) Check out your code
+      # 1) Check out 
       - name: Checkout code
         uses: actions/checkout@v3
 
